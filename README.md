@@ -43,21 +43,21 @@ def posicionamiento (rssi_n,escenario):
     return x_vecino,y_vecino,rssi_vecino
 ```
 # Función 'run_simulation'
-archivo = '~/Escritorio/escenario.xlsx'
+
+En esta función se carga el archivo 'escenario.xlsx'
+Se define las posiciones de las 3 balizas
+Se usan varios valores de RSSI (del nodo) para realizar pruebas.
+Calcula la posición estimada de cada uno (vecino más cercano).
+Representación gráfica
+
+```bash
+    archivo = '~/Escritorio/escenario.xlsx'
     df = pd.read_excel(archivo)
     escenario = df.to_dict(orient='list')
 
     pos_beacons = [(0,0),(0,4),(4,0)]
     x_beacons=[b[0] for b in pos_beacons]
     y_beacons=[b[1] for b in pos_beacons]
-
-# Valores RSSI del nodo. Como ejemplo he usado 
-En esta función se carga el archivo 'escenario.xlsx'
-Se define las posiciones de las 3 balizas
-Se usan varios valores de RSSI (del nodo) para realizar pruebas.
-Calcula la posición estimada de cada uno (vecino más cercano).
-Representación gráfica
-```bash
     rssi_n=[
         [-53.51544993,-60.50514998,-60.50514998],
         [-60.50514998,-53.51544993,-61.96643034],
