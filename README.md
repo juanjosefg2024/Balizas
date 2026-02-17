@@ -101,6 +101,7 @@ En esta función se carga el archivo 'escenario.xlsx'
 Se define las posiciones de las 3 balizas
 Se usan varios valores de RSSI (del nodo) para realizar pruebas.
 Calcula la posición estimada de cada uno (vecino más cercano).
+Se estima la posición del nodo a partir de las posiciones de los vecinos cercanos
 Representación gráfica
 
 ```bash
