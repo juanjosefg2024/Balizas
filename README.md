@@ -29,18 +29,71 @@ def posicionamiento (rssi_n,escenario):
         rssia = escenario['RSSIA'][i]
         rssib = escenario['RSSIB'][i]
         rssic = escenario['RSSIC'][i]
-        var = np.sqrt((rssi_n[0] - rssia)**2 + (rssi_n[1] - rssib)**2 + (rssi_n[2] - rssic)**2)
+        var = (np.sqrt((rssi_n[0] - rssia)**2 + (rssi_n[1] - rssib)**2 + (rssi_n[2] - rssic)**2))
         aux.append(round(float(var), 2))
 
-    indices = np.argsort(aux)[:1] # indices del valores minimos
-    #indices = np.argsort(aux)[:3] # Indices de los 3 valores minimos (3 vecinos)
-
+    indices = np.argsort(aux)[:3] # indices de los 3 valores minimos (3 vecinos)
     
     for j in indices:
         x_vecino.append(escenario['x'][j])
         y_vecino.append(escenario['y'][j])
         rssi_vecino.append([escenario['RSSIA'][j],escenario['RSSIB'][j],escenario['RSSIC'][j]])
+        
     return x_vecino,y_vecino,rssi_vecino
+```
+# Función 'trilateracion_2d'
+Esta función trata de estimar las coordenadas x e y del nodo, a partir de la trilateriación de los puntos vecinos.
+
+```bash
+def trilateracion_2d(rssi_n,escenario):
+    # Posiciones de los puntos vecinos
+    X, Y, rssi = posicionamiento(rssi_n,escenario) # posicion y rssi de los puntos mas cercano
+    n=2.5
+    txpower=-59
+    r=[]    
+    x=[]
+    y=[]
+    x = X
+    y = Y
+    dn=[]
+    di=[]
+    aux=0.01
+    for i in range(3):
+        dn.append(10**((txpower-rssi_n[i])/(10*n)))
+
+    for i in range(3):
+
+        # Distancias del vecino a cada beacon
+        di = []
+        for j in range(3):
+            di.append(10 ** ((txpower - rssi[i][j]) / (10 * n)))
+
+        # Diferencia entre las distancias del nodo y la de los vecinos con respecto a las beacons
+        radio = np.sqrt(
+            (dn[0] - di[0])**2 +
+            (dn[1] - di[1])**2 +
+            (dn[2] - di[2])**2
+        )
+        if radio < aux:
+            return X[0], Y[0]
+        r.append(radio)
+
+
+    A = -2*(x[1]-x[0])
+    B = -2*(y[1]-y[0])
+    C = -2*(x[2]-x[0])
+    D= -2*(y[2]-y[0])
+    E = r[0]**2 - r[1]**2 + x[1]**2 - x[0]**2 + y[1]**2 - y[0]**2
+    F = r[0]**2 - r[2]**2 + x[2]**2 - x[0]**2 + y[2]**2 - y[0]**2
+    determinante = B*C-A*D
+    if determinante == 0:
+        x = None
+        y = None
+    else:
+        x = np.abs((E*D-B*F)/(determinante))
+        y = np.abs((A*F-E*C)/(determinante))
+    
+    return x,y
 ```
 # Función 'run_simulation'
 
