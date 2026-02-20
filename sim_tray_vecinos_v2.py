@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from rssi_trayectoria import calcular_rssi_nodo
 from escenario_sim import crear_escenario
+from trayectoria import recorrido
+
+
 
 def posicionamiento (rssi_n,escenario):
 
@@ -32,12 +35,13 @@ def posicionamiento (rssi_n,escenario):
 
 def run_simulacion():
 
-    escenario,x_beacons,y_beacons = crear_escenario()
+    escenario,x_beacons,y_beacons, largo, ancho = crear_escenario()
 
-    # Trayectoria del nodo
-    archivo_trayectoria = '~/Escritorio/trayectoria.xlsx'
-    df2 = pd.read_excel(archivo_trayectoria)
-    trayectoria = df2.to_dict(orient='list')
+    x_tray,y_tray = recorrido(largo,ancho,0.25)
+    trayectoria = {'x' : x_tray,
+                   'y' : y_tray
+    }
+
 
     for j in range (len(x_beacons)):
         trayectoria[f'RSSI{j}'] = []
@@ -51,16 +55,21 @@ def run_simulacion():
             rssi.append(trayectoria[f'RSSI{i}'][j])
         Xi,Yi,RSSI = posicionamiento (rssi,escenario)
 
+    Xi_r = trayectoria['x']
+    Yi_r = trayectoria['y']
 
     plt.ion()
     fig,ax = plt.subplots(figsize=(10,10))
     ax.scatter(x_beacons, y_beacons, color='red', marker='^') # Beacons
+    ax.plot(Xi_r, Yi_r,'b-',zorder=1)
+    ax.plot(Xi_r, Yi_r,'bs',zorder=1)
     #ax.scatter(escenario['x'], escenario['y'], color='green') # Puntos del footprint
     ax.set_title('Simulación de posicionamiento')
     ax.set_xlabel('Coordenada X')
     ax.set_ylabel('Coordenada Y')
     ax.legend()
     ax.grid()
+
     plt.pause(1)
 
     for j in range(num_puntos):
@@ -68,15 +77,15 @@ def run_simulacion():
         #ax.scatter(escenario['x'], escenario['y'], color='green') # Puntos del footprint
         for i in range(len(x_beacons)):
             rssi.append(trayectoria[f'RSSI{i}'][j])
-        Xi_r = trayectoria['x']
-        Yi_r = trayectoria['y']
-            
+
         Xi,Yi,RSSI = posicionamiento (rssi,escenario) # Posicionamiento estimado
         punto=ax.scatter(Xi, Yi,color='red') # Posición estimada correspondiente a un punto del footprint
-        ax.scatter(Xi_r, Yi_r,color='blue',marker='s')
+
+
         plt.draw()
-        plt.pause(1)
+        #plt.pause(1)
         #punto.remove()
+
 
 
     plt.ioff()
