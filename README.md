@@ -125,6 +125,67 @@ def calcular_rssi_nodo(trayectoria, x_beacons,y_beacons):
     return trayectoria
 
 ```
+### Trayectoria
+
+Se propone el siguiente diseño de trayectoria adaptable a las dimensiones del escenario.
+```bash
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def recorrido(largo, ancho, paso):
+
+    x = []
+    y = []
+
+    xmin = 0.25
+    xmax = largo - 0.25
+    ymin = 0.25
+    ymax = ancho - 0.25
+
+    for xi in np.arange(xmin, xmax + paso, paso):
+        x.append(round(xi, 3))
+        y.append(round(ymin, 3))
+
+    for yi in np.arange(ymin + paso, ymax + paso, paso):
+        x.append(round(xmax, 3))
+        y.append(round(yi, 3))
+
+    for xi in np.arange(xmax - paso, xmin - paso, -paso):
+        x.append(round(xi, 3))
+        y.append(round(ymax, 3))
+
+    for yi in np.arange(ymax - paso, ymin, -paso):
+        x.append(round(xmin, 3))
+        y.append(round(yi, 3))
+
+    xcentro = largo / 2
+    ycentro = ancho / 2
+
+    for d in np.arange(0.5, min(xcentro, ycentro), paso):
+        x.append(round(d, 3))
+        y.append(round(d, 3))
+
+    x0 = round(xcentro, 3)
+    y0 = round(ycentro, 3)
+
+    x.append(x0)
+    y.append(y0)
+
+    x.append(x0)
+    y.append(y0 + 1)
+
+    x.append(x0 + 1)
+    y.append(y0 + 1)
+
+    x.append(x0 + 1)
+    y.append(y0)
+
+    x.append(x0)
+    y.append(y0)
+
+    return x, y
+```
 
 ### 🧭 Simulación de la trayectoria del nodo
 Para el desarrollo de la simulación, en primer lugar se realiza una función `posicionamiento()`para calcular la posición del nodo teniendo en cuenta el escenario planteado y los valores `RSSI` del nodo. Las posiciones finales estimadas serán las del punto del **FingerPrinting** más cercano.
@@ -166,25 +227,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 from rssi_trayectoria import calcular_rssi_nodo
 from escenario_sim import crear_escenario
-
+from trayectoria import recorrido
 
 def run_simulacion():
-    # Creación de escenario
-    escenario,x_beacons,y_beacons = crear_escenario() 
 
-    # Trayectoria del nodo
-    archivo_trayectoria = 'trayectoria.xlsx'
-    df2 = pd.read_excel(archivo_trayectoria)
-    trayectoria = df2.to_dict(orient='list')
+    escenario,x_beacons,y_beacons, largo, ancho = crear_escenario()
+    # Trayectoria propuesta
+    x_tray,y_tray = recorrido(largo,ancho,0.25)
+    trayectoria = {'x' : x_tray,
+                   'y' : y_tray
+    }
 
-    # Se crean tantas columnas RSSI como número de balizas haya en el escenario
+
     for j in range (len(x_beacons)):
         trayectoria[f'RSSI{j}'] = []
     
-    # Se calculan los valores RSSI correspondientes
     trayectoria = calcular_rssi_nodo(trayectoria,x_beacons,y_beacons)
     
-    # Se obtienen las coordenadas XY estimadas
     num_puntos=len(trayectoria['RSSI0'])
     for j in range(num_puntos):
         rssi=[]
@@ -192,32 +251,36 @@ def run_simulacion():
             rssi.append(trayectoria[f'RSSI{i}'][j])
         Xi,Yi,RSSI = posicionamiento (rssi,escenario)
 
+    Xi_r = trayectoria['x']
+    Yi_r = trayectoria['y']
 
     plt.ion()
     fig,ax = plt.subplots(figsize=(10,10))
-    ax.scatter(x_beacons, y_beacons, color='red', marker='^') # Representación de las balizas
-    #ax.scatter(escenario['x'], escenario['y'], color='green') # Representación de los puntos del FingerPrinting
+    ax.scatter(x_beacons, y_beacons, color='red', marker='^') # Beacons
+    ax.plot(Xi_r, Yi_r,'b-',zorder=1)
+    ax.plot(Xi_r, Yi_r,'bs',zorder=1)
+    #ax.scatter(escenario['x'], escenario['y'], color='green') # Puntos del footprint
     ax.set_title('Simulación de posicionamiento')
     ax.set_xlabel('Coordenada X')
     ax.set_ylabel('Coordenada Y')
     ax.legend()
     ax.grid()
+
     plt.pause(1)
 
     for j in range(num_puntos):
         rssi=[]
+        #ax.scatter(escenario['x'], escenario['y'], color='green') # Puntos del footprint
         for i in range(len(x_beacons)):
             rssi.append(trayectoria[f'RSSI{i}'][j])
-        Xi_r = trayectoria['x']
-        Yi_r = trayectoria['y']
-            
-        Xi,Yi,RSSI = posicionamiento (rssi,escenario) # Trayectoria estimada
-        punto=ax.scatter(Xi, Yi,color='red') # Trayectoria propuesta
-        ax.scatter(Xi_r, Yi_r,color='blue',marker='s')
-        plt.draw()
-        plt.pause(1)
-        #punto.remove()
 
+        Xi,Yi,RSSI = posicionamiento (rssi,escenario) # Posicionamiento estimado
+        punto=ax.scatter(Xi, Yi,color='red') # Posición estimada correspondiente a un punto del footprint
+
+
+        plt.draw()
+        #plt.pause(1)
+        #punto.remove()
 
     plt.ioff()
     plt.show()
