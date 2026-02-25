@@ -1,25 +1,12 @@
-# <u>Simulación de posicionamiento en interiores con RSSI</u>
-Se trata de realizar una simulación en tiempo real y en un entorno físico. Para ello se propone colocar 4 beacons en cada una de las esquina de la sala de innovación (A = 115 m²).
-
-
-### 🛠️ Requisitos 
-```bash
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 import threading
 import queue
 from adafruit_ble import BLERadio
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
-```
 
-### 🧭 Simulación de la trayectoria del nodo
-Para el desarrollo de la simulación en un entorno físico, en primer lugar se realiza una función `trilateracion_2d()` para estimar la posición del nodo teniendo en cuenta los valores `RSSI` del nodo con respecto a las beacons colocadas en cada esquina de la sala. Las posiciones finales estimadas serán las resultante de realizar la trilateración. Para la trilateración, se realiza con respecto a todas las beacons del escenario (xi, yi, ri) y se utiliza como referencia la posición XY (x0, y0) de la beacon de la cual se obtiene el mayor RSSI y la distancia (r0) del nodo a dicha beacon.
-
-Para la obtención de los valores RSSI es necesario incluir los módulos `adafruit_ble` y `adafruit_ble.advertising.standard`. Se han tomado los address de las beacons para clasificar los RSSI recibidos por cada una, de esta manera se evita utilizar RSSI de otros equipos externos. 
-
-```bash
-
-q = queue.Queue() # Para comunicación con el hilo t1, y poder visualizar los datos obtenidos
+q = queue.Queue()
 
 def trilateracion_2d(rssi_n,x_beacons,y_beacons):
 
@@ -52,26 +39,22 @@ def trilateracion_2d(rssi_n,x_beacons,y_beacons):
 
 
 def run_simulacion():
-    area_inn = 115 # Área de la sala de innovación
+    area_inn = 115
     lado =  np.sqrt(area_inn)
     x_beacons=[0,0,lado,lado]
     y_beacons=[0,lado,0,lado]
     ble = BLERadio()
-
-    # Address de las 5 beacons
     B1 = "FE:2F:2E:23:53:2F"
     B2 = "F9:AA:8D:12:63:70"
     B3 = "ED:6F:72:1B:F1:83"
     B4 = "DC:04:2E:9D:49:62"
     B5 = "D6:F4:62:94:9C:6A"
-
-    # Se van a utilizar 4 beacons
     address_beacons = [B1,B2,B3,B4]
     num_beacons = len(address_beacons)
     address_indice = {addr: i for i, addr in enumerate(address_beacons)}
     rssi_n = np.zeros(num_beacons)
 
-    # Obtener el RSSI con respecto a las 4 beacons y calcular la posición del nodo mediante la trilateración
+    
     while True:
         for advertisement in ble.start_scan(ProvideServicesAdvertisement, timeout=1):
             #if UARTService in advertisement.services:
@@ -81,19 +64,18 @@ def run_simulacion():
                 indice = address_indice[address]
                 rssi_n[indice] = rssi
             print(rssi_n)
-            Xi,Yi = trilateracion_2d (rssi_n,x_beacons,y_beacons) # Estimación de la posición
+            Xi,Yi = trilateracion_2d (rssi_n,x_beacons,y_beacons)
             print(Xi,Yi)
             q.put((Xi,Yi))
 
             
 def run_visualizacion():
-
-    # Visualización del posicionamiento en tiempo real
     area_inn = 115
     lado =  np.sqrt(area_inn)
     x_beacons=[0,0,lado,lado]
     y_beacons=[0,lado,0,lado]
 
+    
     plt.ion()
     fig,ax = plt.subplots(figsize=(10,10))
     ax.scatter(x_beacons, y_beacons, color='red', marker='s') # Representación de las beacons
@@ -119,6 +101,7 @@ def run_visualizacion():
 if __name__ == "__main__":
     t1 = threading.Thread(target=run_simulacion,daemon=True)
     t1.start()
+    #t2 = threading.Thread(target=run_visualizacion)
+    #t2.start()
 
     run_visualizacion()
-```
