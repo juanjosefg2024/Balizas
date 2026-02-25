@@ -2,19 +2,21 @@
 Se trata de implementar una simulación básica de posicionamiento en interiores utlizando valores `RSSI` previamente estimados en el escenario propuesto.
 Consta de 3 códigos:
 *  escenario_sim.py
+*  trayectoria.py
 *  rssi_trayectoria.py
-*  sim_tray_vecinos_v2.py
+*  sim_tray_trilateracion_v3.py
+
 
 
 ## 🧭 Simulador de trayectoria
 Para la simulación de la trayectoria dentro de un escenario definido en base a la propuesta, es necesario conocer los requisitos y las funciones adicionales para la ejecución del simulador.
 ### 🛠️ Requisitos 
 ```bash
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from rssi_trayectoria import calcular_rssi_nodo
 from escenario_sim import crear_escenario
+from trayectoria import recorrido
 ```
 ### 🌐 Simulación de escenario
 La creación del escenario se realiza de manera programable. Para ello, se llama a la función `crear_escenario()` que es importada desde `escenario_sim.py`.
@@ -26,10 +28,11 @@ Además, teniendo en cuenta el área y la densidad de puntos previamente estable
 Las funciones que componen `escenario_sim.py` son:
 ```bash
 import numpy as np
+import matplotlib.pyplot as plt
 from rssi_trayectoria import calcular_rssi_nodo
 
 def rejilla(largo, ancho,x_beacons,y_beacons):
-    dens_puntos=0.2
+    dens_puntos=0.5
     x=[]
     y=[]
     index_x=[]
@@ -86,10 +89,11 @@ def crear_escenario():
         escenario[f'RSSI{j}'] = []
     escenario = calcular_rssi_nodo(escenario,x_beacons,y_beacons)
 
-    return escenario , x_beacons, y_beacons
+    return escenario , x_beacons, y_beacons, largo, ancho
 
 if __name__ == "__main__":
-    escenario ,  x_beacons, y_beacons = crear_escenario()
+    escenario ,  x_beacons, y_beacons, largo, ancho = crear_escenario()
+
 ```
 Se requiere de la función `calcular_rssi_nodo` que se importa desde `rssi_trayectoria.py`.
 ### 📶 Cálculo los valores RSSI
@@ -114,7 +118,7 @@ import numpy as np
 
 def calcular_rssi_nodo(trayectoria, x_beacons,y_beacons):
     txpower=-59
-    n=1.8
+    n=2.5
     rssi=[]
     
     for j in range (len(x_beacons)):
@@ -129,9 +133,8 @@ def calcular_rssi_nodo(trayectoria, x_beacons,y_beacons):
 
 Se propone el siguiente diseño de trayectoria adaptable a las dimensiones del escenario.
 ```bash
-import numpy as np
-import matplotlib.pyplot as plt
 
+import numpy as np
 
 def recorrido(largo, ancho, paso):
 
@@ -185,105 +188,98 @@ def recorrido(largo, ancho, paso):
     y.append(y0)
 
     return x, y
+
 ```
 
 ### 🧭 Simulación de la trayectoria del nodo
-Para el desarrollo de la simulación, en primer lugar se realiza una función `posicionamiento()`para calcular la posición del nodo teniendo en cuenta el escenario planteado y los valores `RSSI` del nodo. Las posiciones finales estimadas serán las del punto del **FingerPrinting** más cercano.
+Para el desarrollo de la simulación, en primer lugar se realiza una función `trilateracion_2d()` para calcular la posición del nodo teniendo en cuenta el escenario planteado y los valores `RSSI` del nodo. Las posiciones finales estimadas serán las resultante de realizar la trilateración. Para la trilateración, se realiza con respecto a todas las beacons del escenario (xi, yi, ri) y se utiliza como referencia la posición XY (x0, y0) de la beacon de la cual se obtiene el mayor RSSI y la distancia (r0) del nodo a dicha beacon.
 
 
 ```bash
-def posicionamiento (rssi_n,escenario):
+def trilateracion_2d(rssi_n,x_beacons,y_beacons):
 
-    aux=[]
-    x_vecino=[]
-    y_vecino=[]
-    rssi_vecino=[]
-    distancia=[]
-    columnas_rssi=[]
-    for col in escenario.keys():
-        if col.startswith('RSSI'):
-            columnas_rssi.append(col)
+    n=2.5
+    txpower=-59
+    xi=[]
+    yi=[]
+    ri=[]
+
+
+    indice = np.argmax(rssi_n)
+    r0 = 10**((txpower-rssi_n[indice])/(10*n))
+    x0, y0 = x_beacons[indice], y_beacons[indice]
+
+    for i in range(len(x_beacons)):
+        if i != indice:
+            xi.append(x_beacons[i])
+            yi.append(y_beacons[i])
+            d = (10**((txpower-rssi_n[i])/(10*n))) # Distancia del nodo a las beacons
+            ri.append(d)
+
+    xi = np.array(xi)
+    yi = np.array(yi)
+    ri = np.array(ri)
     
-    for i in range(len(escenario['x'])):
-        escenario_rssi = np.array([escenario[col][i] for col in columnas_rssi])
-        distancia = np.linalg.norm(rssi_n - escenario_rssi)
+    A = np.column_stack([2*(xi - x0), 2*(yi - y0)])
+    B = (xi**2 + yi**2 - ri**2) - (x0**2 + y0**2 - r0**2)
 
-        aux.append(round(float(distancia), 2))
+    posiciones, residuals, rank, s  = np.linalg.lstsq(A, B, rcond=None)
+    return posiciones[0],posiciones[1]
 
-    indice = np.argsort(aux)[:1]
-    for j in indice:
-        x_vecino.append(escenario['x'][j])
-        y_vecino.append(escenario['y'][j])
-        rssi_vecino.append([escenario[col][j] for col in columnas_rssi])
-
-    return x_vecino,y_vecino,rssi_vecino
-```
-Para la simulación de la trayectoria que va a seguir el nodo, se obtienen las coordenadas XY del archivo 'trayectoria.xslx'. Para diseñar una trayectoria es necesaria cambiar las coordenadas en dicho archivo.
-Además, se implementa las líneas de código para la representación báscica de la trayectoria en el escenario.
-```bash
-# Requisitos
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from rssi_trayectoria import calcular_rssi_nodo
-from escenario_sim import crear_escenario
-from trayectoria import recorrido
 
 def run_simulacion():
 
     escenario,x_beacons,y_beacons, largo, ancho = crear_escenario()
-    # Trayectoria propuesta
+
+    # Se añaden las posciones XY de la trayectoria o recorrido simulado
     x_tray,y_tray = recorrido(largo,ancho,0.25)
     trayectoria = {'x' : x_tray,
                    'y' : y_tray
     }
 
-
+    
+    # Se crean tantas columnas RSSI como beacons haya
     for j in range (len(x_beacons)):
         trayectoria[f'RSSI{j}'] = []
-    
+    # Rellenar las columnas RSSI teniendo en cuenta las posiciones
     trayectoria = calcular_rssi_nodo(trayectoria,x_beacons,y_beacons)
     
     num_puntos=len(trayectoria['RSSI0'])
     for j in range(num_puntos):
         rssi=[]
         for i in range(len(x_beacons)):
-            rssi.append(trayectoria[f'RSSI{i}'][j])
-        Xi,Yi,RSSI = posicionamiento (rssi,escenario)
+            rssi.append(trayectoria[f'RSSI{i}'][j]) # Variable RSSI del nodo en el recorrido establecido con respecto a cada beacons
 
-    Xi_r = trayectoria['x']
-    Yi_r = trayectoria['y']
-
+    # Representacion punto a punto
     plt.ion()
     fig,ax = plt.subplots(figsize=(10,10))
-    ax.scatter(x_beacons, y_beacons, color='red', marker='^') # Beacons
-    ax.plot(Xi_r, Yi_r,'b-',zorder=1)
-    ax.plot(Xi_r, Yi_r,'bs',zorder=1)
-    #ax.scatter(escenario['x'], escenario['y'], color='green') # Puntos del footprint
+    ax.scatter(x_beacons, y_beacons, color='red', marker='s') # Representación de las beacons
     ax.set_title('Simulación de posicionamiento')
     ax.set_xlabel('Coordenada X')
     ax.set_ylabel('Coordenada Y')
     ax.legend()
     ax.grid()
-
     plt.pause(1)
 
     for j in range(num_puntos):
         rssi=[]
-        #ax.scatter(escenario['x'], escenario['y'], color='green') # Puntos del footprint
+
         for i in range(len(x_beacons)):
             rssi.append(trayectoria[f'RSSI{i}'][j])
+        Xi_r = trayectoria['x'][j]
+        Yi_r = trayectoria['y'][j]
+        Xi,Yi = trilateracion_2d (rssi,x_beacons,y_beacons) # Estimación de posición mediante trilateracion
 
-        Xi,Yi,RSSI = posicionamiento (rssi,escenario) # Posicionamiento estimado
-        punto=ax.scatter(Xi, Yi,color='red') # Posición estimada correspondiente a un punto del footprint
-
-
+        ea = np.sqrt((Xi_r-Xi)**2 + (Yi_r-Yi)**2)
+        er = (ea/(np.sqrt(Xi_r**2 + Yi_r**2)))*100
+        # print(f"Error absoluto {ea}, Porcentaje de error {er}") # Descomentar para ver el error absoluto entre posiciones y el porcentaje de error
+        punto=ax.scatter(Xi, Yi,color='blue') # Representación de las posiciones estimadas
         plt.draw()
-        #plt.pause(1)
-        #punto.remove()
-
+        plt.pause(0.1)
+        #punto.remove() # Descomentar para visualizar solamente la posición actual
     plt.ioff()
     plt.show()
+
 if __name__ == "__main__":
     run_simulacion()
 ```
