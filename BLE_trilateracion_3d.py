@@ -1,42 +1,13 @@
-# <u>Simulación de posicionamiento en interiores con RSSI</u>
-Se trata de realizar una simulación en tiempo real y en un entorno físico. Para ello se propone colocar 4 beacons en cada una de las esquina de la sala de innovación (A = 115 m²).
-
-
-### 🛠️ Requisitos 
-```bash
 import numpy as np
 import matplotlib.pyplot as plt
-<<<<<<< Updated upstream
-=======
 from scipy.ndimage import gaussian_filter
->>>>>>> Stashed changes
 import threading
 import queue
 from adafruit_ble import BLERadio
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
-```
-
-### 🧭 Simulación de la trayectoria del nodo
-<<<<<<< Updated upstream
-Para el desarrollo de la simulación en un entorno físico, en primer lugar se realiza una función `trilateracion_2d()` para estimar la posición del nodo teniendo en cuenta los valores `RSSI` del nodo con respecto a las beacons colocadas en cada esquina de la sala. Las posiciones finales estimadas serán las resultante de realizar la trilateración. Para la trilateración, se realiza con respecto a todas las beacons del escenario (xi, yi, ri) y se utiliza como referencia la posición XY (x0, y0) de la beacon de la cual se obtiene el mayor RSSI y la distancia (r0) del nodo a dicha beacon.
-=======
-Para el desarrollo de la simulación en un entorno físico, en primer lugar se realiza una función `trilateracion_3d()` para estimar la posición del nodo teniendo en cuenta los valores `RSSI` del nodo con respecto a las beacons colocadas en cada esquina de la sala. Las posiciones finales estimadas serán las resultante de realizar la trilateración. Para la trilateración, se realiza con respecto a todas las beacons del escenario (xi, yi, zi, ri) y se utiliza como referencia la posición XYZ (x0, y0, z0) de la beacon de la cual se obtiene el mayor RSSI y la distancia (r0) del nodo a dicha beacon.
->>>>>>> Stashed changes
-
-Para la obtención de los valores RSSI es necesario incluir los módulos `adafruit_ble` y `adafruit_ble.advertising.standard`. Se han tomado los address de las beacons para clasificar los RSSI recibidos por cada una, de esta manera se evita utilizar RSSI de otros equipos externos. 
-
-```bash
 
 q = queue.Queue() # Para comunicación con el hilo t1, y poder visualizar los datos obtenidos
 
-<<<<<<< Updated upstream
-def trilateracion_2d(rssi_n,x_beacons,y_beacons):
-
-    n=2.5
-    txpower=-59
-    xi=[]
-    yi=[]
-=======
 def trilateracion_3d(rssi_n,x_beacons,y_beacons,z_beacons):
 
     n = 2.5
@@ -44,40 +15,22 @@ def trilateracion_3d(rssi_n,x_beacons,y_beacons,z_beacons):
     xi=[]
     yi=[]
     zi=[]
->>>>>>> Stashed changes
     ri=[]
 
     indice = np.argmax(rssi_n)
     r0 = 10**((txpower-rssi_n[indice])/(10*n))
-<<<<<<< Updated upstream
-    x0, y0 = x_beacons[indice], y_beacons[indice]
-=======
     x0, y0, z0 = x_beacons[indice], y_beacons[indice], z_beacons[indice]
->>>>>>> Stashed changes
 
     for i in range(len(x_beacons)):
         if i != indice:
             xi.append(x_beacons[i])
             yi.append(y_beacons[i])
-<<<<<<< Updated upstream
-            d = (10**((txpower-rssi_n[i])/(10*n))) # Distancia del nodo a las 3 beacons
-=======
             zi.append(z_beacons[i])
             d = (10**((txpower-rssi_n[i])/(10*n))) # Distancia del nodo a las beacons
->>>>>>> Stashed changes
             ri.append(d)
 
     xi = np.array(xi)
     yi = np.array(yi)
-<<<<<<< Updated upstream
-    ri = np.array(ri)
-    
-    A = np.column_stack([2*(xi - x0), 2*(yi - y0)])
-    B = (xi**2 + yi**2 - ri**2) - (x0**2 + y0**2 - r0**2)
-
-    posiciones, residuals, rank, s  = np.linalg.lstsq(A, B, rcond=None)
-    return posiciones[0],posiciones[1]
-=======
     zi = np.array(zi)
     ri = np.array(ri)
     
@@ -89,32 +42,10 @@ def trilateracion_3d(rssi_n,x_beacons,y_beacons,z_beacons):
 
     posiciones, residuals, rank, s  = np.linalg.lstsq(A, B, rcond=None)
     return posiciones[0],posiciones[1],posiciones[2]
->>>>>>> Stashed changes
 
 
 def run_simulacion():
-    area_inn = 115 # Área de la sala de innovación
-    lado =  np.sqrt(area_inn)
-    x_beacons=[0,0,lado,lado]
-    y_beacons=[0,lado,0,lado]
-    ble = BLERadio()
 
-<<<<<<< Updated upstream
-    # Address de las 5 beacons
-    B1 = "FE:2F:2E:23:53:2F"
-    B2 = "F9:AA:8D:12:63:70"
-    B3 = "ED:6F:72:1B:F1:83"
-    B4 = "DC:04:2E:9D:49:62"
-    B5 = "D6:F4:62:94:9C:6A"
-
-    # Se van a utilizar 4 beacons
-    address_beacons = [B1,B2,B3,B4]
-    num_beacons = len(address_beacons)
-    address_indice = {addr: i for i, addr in enumerate(address_beacons)}
-    rssi_n = np.zeros(num_beacons)
-
-    # Obtener el RSSI con respecto a las 4 beacons y calcular la posición del nodo mediante la trilateración
-=======
     # Dimensiones del setup y posiciones de las balizas
     area_inn = 115 # Área de la sala de innovación
     lado =  np.sqrt(area_inn)
@@ -143,7 +74,6 @@ def run_simulacion():
     array_rssi = [[] for i in range(num_beacons)]
 
     # Obtener el RSSI con respecto a las beacons y calcular la posición del nodo mediante la trilateración
->>>>>>> Stashed changes
     while True:
         for advertisement in ble.start_scan(ProvideServicesAdvertisement, timeout=1):
             #if UARTService in advertisement.services:
@@ -151,30 +81,6 @@ def run_simulacion():
             address = str(advertisement.address).split('"')[1]
             if address in address_beacons:
                 indice = address_indice[address]
-<<<<<<< Updated upstream
-                rssi_n[indice] = rssi
-            print(rssi_n)
-            Xi,Yi = trilateracion_2d (rssi_n,x_beacons,y_beacons) # Estimación de la posición
-            print(Xi,Yi)
-            q.put((Xi,Yi))
-
-            
-def run_visualizacion():
-
-    # Visualización del posicionamiento en tiempo real
-    area_inn = 115
-    lado =  np.sqrt(area_inn)
-    x_beacons=[0,0,lado,lado]
-    y_beacons=[0,lado,0,lado]
-
-    plt.ion()
-    fig,ax = plt.subplots(figsize=(10,10))
-    ax.scatter(x_beacons, y_beacons, color='red', marker='s') # Representación de las beacons
-    ax.set_title('Simulación de posicionamiento')
-    ax.set_xlabel('Coordenada X')
-    ax.set_ylabel('Coordenada Y')
-    ax.grid()
-=======
                 #rssi_n[indice] = rssi
 
                 array_rssi[indice].append(rssi)
@@ -213,21 +119,12 @@ def run_visualizacion():
     ax.imshow(imagen,extent=[0,lado,0,lado])
     ax.scatter(x_beacons, y_beacons, color='red', marker='s') # Representación de las beacons
     ax.set_title('Sala de innovación')
->>>>>>> Stashed changes
 
     punto, = ax.plot([], [], 'bo') 
     while True:
         try:
-<<<<<<< Updated upstream
-            Xi, Yi = q.get()
-            #punto.remove() # Descomentar para visualizar solamente la posición actual
-            #ax.clear()
-            #ax.scatter(Xi, Yi, color='blue')
-            punto.set_data([Xi],[Yi])
-=======
             Xi, Yi, Zi = q.get()
             punto.set_data([Xi],[Yi]) # Representación de la posición del nodo
->>>>>>> Stashed changes
             fig.canvas.draw() 
             fig.canvas.flush_events()
         except queue.Empty:
@@ -239,4 +136,3 @@ if __name__ == "__main__":
     t1.start()
 
     run_visualizacion()
-```
